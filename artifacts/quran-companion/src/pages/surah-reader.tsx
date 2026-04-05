@@ -6,13 +6,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { AudioPlayer } from "@/components/audio-player";
 import { VerseActions } from "@/components/verse-actions";
-import { ChevronLeft } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Brain, ChevronLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function SurahReader() {
   const params = useParams();
   const surahNumber = parseInt(params.surahNumber || "1");
   const [translationId, setTranslationId] = useState<number | undefined>(undefined);
+  const [isHifzMode, setIsHifzMode] = useState(false);
   
   const { data: surahs } = useListSurahs();
   const surahInfo = surahs?.find(s => s.id === surahNumber);
@@ -30,8 +33,14 @@ export default function SurahReader() {
         <Link href="/quran" className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground">
           <ChevronLeft className="h-4 w-4 mr-1" /> Back to Surahs
         </Link>
-        <Select 
-          value={translationId?.toString()} 
+        <div className="flex border-b pb-4 lg:border-none lg:pb-0 items-center justify-end gap-4">
+          <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10 transition-colors hover:bg-primary/10">
+            <Brain className={`h-4 w-4 ${isHifzMode ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+            <Label htmlFor="hifz-mode" className="text-sm font-medium cursor-pointer">Hifz Mode</Label>
+            <Switch id="hifz-mode" checked={isHifzMode} onCheckedChange={setIsHifzMode} />
+          </div>
+          <Select 
+            value={translationId?.toString()} 
           onValueChange={(val) => setTranslationId(parseInt(val))}
         >
           <SelectTrigger className="w-[200px]" data-testid="select-translation">
@@ -45,6 +54,7 @@ export default function SurahReader() {
             ))}
           </SelectContent>
         </Select>
+        </div>
       </div>
 
       {surahInfo ? (
@@ -98,8 +108,22 @@ export default function SurahReader() {
                     />
                   </div>
                   
-                  <div className="font-arabic text-4xl md:text-5xl leading-loose text-right text-foreground py-4" dir="rtl">
-                    {verse.textUthmani}
+                  <div className="font-arabic text-4xl md:text-5xl leading-loose text-right text-foreground py-4 flex flex-wrap justify-start gap-x-3 gap-y-6" dir="rtl">
+                    {(verse as any).wordByWord?.length ? (
+                      (verse as any).wordByWord.map((word: any) => (
+                        <span 
+                          key={word.position}
+                          className={`transition-all duration-300 ${isHifzMode ? 'blur-[6px] hover:blur-none cursor-help opacity-90 hover:opacity-100' : ''}`}
+                          title={word.translation || ""}
+                        >
+                          {word.textUthmani}
+                        </span>
+                      ))
+                    ) : (
+                      <span className={`transition-all duration-300 ${isHifzMode ? 'blur-[6px] hover:blur-none cursor-help' : ''}`}>
+                        {verse.textUthmani}
+                      </span>
+                    )}
                   </div>
                   
                   {verse.translation && (

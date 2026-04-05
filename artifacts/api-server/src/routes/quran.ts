@@ -223,6 +223,26 @@ router.get("/quran/random-verse", async (req, res): Promise<void> => {
   res.json(mapVerse(verseData.verse as Record<string, unknown>, translationMap));
 });
 
+router.get("/quran/daily-challenge", async (_req, res): Promise<void> => {
+  // Statically serve a beautiful 3-verse set from Al-Baqarah (284, 285, 286)
+  const surahNum = 2;
+  const verseKeys = ["2:284", "2:285", "2:286"];
+  
+  const translationMap = await fetchChapterTranslations(surahNum);
+  
+  const versesData = await Promise.all(verseKeys.map(key => 
+    fetchQuranApi(`/verses/by_key/${key}?words=true&word_fields=text_uthmani,transliteration&fields=text_uthmani,verse_key&audio=1`) as Promise<{ verse: unknown }>
+  ));
+  
+  const verses = versesData.filter(d => d.verse).map(d => mapVerse(d.verse as Record<string, unknown>, translationMap));
+  res.json({ verses });
+});
+
+router.post("/user/streak/increment", async (_req, res): Promise<void> => {
+  // For hackathon prototype, we mock the local state
+  res.json({ success: true, newStreak: 13, message: "Streak incremented!" });
+});
+
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
 }

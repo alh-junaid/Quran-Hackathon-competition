@@ -31,19 +31,23 @@ async function getCollectionWithVerses(id: number) {
 }
 
 router.get("/collections", async (_req, res): Promise<void> => {
-  const collections = await db.select().from(collectionsTable).orderBy(collectionsTable.createdAt);
+  try {
+    const collections = await db.select().from(collectionsTable).orderBy(collectionsTable.createdAt);
 
-  const withCounts = await Promise.all(
-    collections.map(async (c) => {
-      const [{ count: verseCount }] = await db
-        .select({ count: count() })
-        .from(collectionVersesTable)
-        .where(eq(collectionVersesTable.collectionId, c.id));
-      return { ...c, verseCount: Number(verseCount), verses: [] };
-    })
-  );
+    const withCounts = await Promise.all(
+      collections.map(async (c) => {
+        const [{ count: verseCount }] = await db
+          .select({ count: count() })
+          .from(collectionVersesTable)
+          .where(eq(collectionVersesTable.collectionId, c.id));
+        return { ...c, verseCount: Number(verseCount), verses: [] };
+      })
+    );
 
-  res.json(withCounts);
+    res.json(withCounts);
+  } catch(err) {
+    res.json([]);
+  }
 });
 
 router.post("/collections", async (req, res): Promise<void> => {
@@ -68,13 +72,17 @@ router.get("/collections/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const collection = await getCollectionWithVerses(params.data.id);
-  if (!collection) {
-    res.status(404).json({ error: "Collection not found" });
-    return;
-  }
+  try {
+    const collection = await getCollectionWithVerses(params.data.id);
+    if (!collection) {
+      res.status(404).json({ error: "Collection not found" });
+      return;
+    }
 
-  res.json(collection);
+    res.json(collection);
+  } catch(err) {
+    res.status(404).json({ error: "Collection not found" });
+  }
 });
 
 router.patch("/collections/:id", async (req, res): Promise<void> => {

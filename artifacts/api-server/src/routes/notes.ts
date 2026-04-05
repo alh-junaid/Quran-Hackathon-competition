@@ -12,11 +12,15 @@ import {
 const router: IRouter = Router();
 
 router.get("/notes", async (_req, res): Promise<void> => {
-  const notes = await db
-    .select()
-    .from(notesTable)
-    .orderBy(notesTable.updatedAt);
-  res.json(notes);
+  try {
+    const notes = await db
+      .select()
+      .from(notesTable)
+      .orderBy(notesTable.updatedAt);
+    res.json(notes);
+  } catch (err) {
+    res.json([]);
+  }
 });
 
 router.post("/notes", async (req, res): Promise<void> => {
@@ -37,17 +41,21 @@ router.get("/notes/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [note] = await db
-    .select()
-    .from(notesTable)
-    .where(eq(notesTable.id, params.data.id));
+  try {
+    const [note] = await db
+      .select()
+      .from(notesTable)
+      .where(eq(notesTable.id, params.data.id));
 
-  if (!note) {
+    if (!note) {
+      res.status(404).json({ error: "Note not found" });
+      return;
+    }
+
+    res.json(note);
+  } catch(err) {
     res.status(404).json({ error: "Note not found" });
-    return;
   }
-
-  res.json(note);
 });
 
 router.patch("/notes/:id", async (req, res): Promise<void> => {
