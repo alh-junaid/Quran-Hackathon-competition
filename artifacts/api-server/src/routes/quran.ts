@@ -246,6 +246,12 @@ function mapVerse(v: Record<string, unknown>, translationMap: Map<string, string
 
   const audio = v.audio as Record<string, unknown> | undefined;
 
+  // Construct audio URL from verse key using Quran.com CDN (Mishary Rashid Al-Afasy)
+  const [surahPart, versePart] = verseKey.split(":");
+  const surahPad = surahPart.padStart(3, "0");
+  const versePad = (versePart || "1").padStart(3, "0");
+  const constructedAudioUrl = `https://verses.quran.com/Alafasy/mp3/${surahPad}${versePad}.mp3`;
+
   return {
     id: v.id,
     verseNumber: v.verse_number,
@@ -253,7 +259,7 @@ function mapVerse(v: Record<string, unknown>, translationMap: Map<string, string
     surahNumber: v.chapter_id,
     textUthmani: v.text_uthmani ?? null,
     translation,
-    audioUrl: audio?.url ? `https://verses.quran.com/${audio.url}` : null,
+    audioUrl: audio?.url ? `https://verses.quran.com/${audio.url}` : constructedAudioUrl,
     wordByWord,
   };
 }
