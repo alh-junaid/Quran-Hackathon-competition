@@ -3,13 +3,26 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Quran Companion API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: quran
+    description: Quran content proxy (verses, surahs, translations, audio)
+  - name: bookmarks
+    description: User bookmarks management
+  - name: notes
+    description: User verse notes and reflections
+  - name: goals
+    description: User reading goals and streaks
+  - name: collections
+    description: User verse collections
+  - name: dashboard
+    description: Dashboard summary and stats
+
 paths:
   /healthz:
     get:
@@ -24,6 +37,575 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Quran Content Proxy ────────────────────────────────────────────────────
+  /quran/surahs:
+    get:
+      operationId: listSurahs
+      tags: [quran]
+      summary: List all surahs
+      description: Returns list of all 114 surahs from Quran Foundation API
+      responses:
+        "200":
+          description: List of surahs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Surah"
+
+  /quran/surahs/{surahNumber}/verses:
+    get:
+      operationId: getSurahVerses
+      tags: [quran]
+      summary: Get verses for a surah
+      parameters:
+        - name: surahNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: translationId
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 131
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: perPage
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Verses with translations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersesPage"
+
+  /quran/verses/{verseKey}:
+    get:
+      operationId: getVerse
+      tags: [quran]
+      summary: Get a single verse by key (e.g. 1:1)
+      parameters:
+        - name: verseKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: translationId
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 131
+      responses:
+        "200":
+          description: Single verse with translation and audio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Verse"
+        "404":
+          description: Verse not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /quran/search:
+    get:
+      operationId: searchQuran
+      tags: [quran]
+      summary: Search Quran verses
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: translationId
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 131
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
+
+  /quran/translations:
+    get:
+      operationId: listTranslations
+      tags: [quran]
+      summary: List available translations
+      responses:
+        "200":
+          description: Available translations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Translation"
+
+  /quran/tafsirs:
+    get:
+      operationId: listTafsirs
+      tags: [quran]
+      summary: List available tafsirs
+      responses:
+        "200":
+          description: Available tafsirs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tafsir"
+
+  /quran/verses/{verseKey}/tafsir:
+    get:
+      operationId: getVerseTafsir
+      tags: [quran]
+      summary: Get tafsir for a verse
+      parameters:
+        - name: verseKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tafsirId
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 169
+      responses:
+        "200":
+          description: Tafsir content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TafsirContent"
+
+  /quran/random-verse:
+    get:
+      operationId: getRandomVerse
+      tags: [quran]
+      summary: Get a random verse (verse of the day)
+      parameters:
+        - name: translationId
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 131
+      responses:
+        "200":
+          description: Random verse
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Verse"
+
+  # ─── Bookmarks ───────────────────────────────────────────────────────────────
+  /bookmarks:
+    get:
+      operationId: listBookmarks
+      tags: [bookmarks]
+      summary: Get all bookmarks
+      responses:
+        "200":
+          description: List of bookmarks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bookmark"
+    post:
+      operationId: createBookmark
+      tags: [bookmarks]
+      summary: Create a bookmark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookmarkBody"
+      responses:
+        "201":
+          description: Created bookmark
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bookmark"
+
+  /bookmarks/{id}:
+    delete:
+      operationId: deleteBookmark
+      tags: [bookmarks]
+      summary: Delete a bookmark
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /bookmarks/check/{verseKey}:
+    get:
+      operationId: checkBookmark
+      tags: [bookmarks]
+      summary: Check if a verse is bookmarked
+      parameters:
+        - name: verseKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bookmark status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookmarkStatus"
+
+  # ─── Notes / Reflections ────────────────────────────────────────────────────
+  /notes:
+    get:
+      operationId: listNotes
+      tags: [notes]
+      summary: Get all notes
+      responses:
+        "200":
+          description: List of notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Note"
+    post:
+      operationId: createNote
+      tags: [notes]
+      summary: Create a note for a verse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteBody"
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /notes/{id}:
+    get:
+      operationId: getNote
+      tags: [notes]
+      summary: Get a note by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateNote
+      tags: [notes]
+      summary: Update a note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNoteBody"
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+    delete:
+      operationId: deleteNote
+      tags: [notes]
+      summary: Delete a note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── Goals & Streaks ────────────────────────────────────────────────────────
+  /goals:
+    get:
+      operationId: getGoal
+      tags: [goals]
+      summary: Get user reading goal
+      responses:
+        "200":
+          description: User reading goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+    post:
+      operationId: upsertGoal
+      tags: [goals]
+      summary: Create or update the reading goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertGoalBody"
+      responses:
+        "200":
+          description: Goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+
+  /goals/log:
+    post:
+      operationId: logReadingSession
+      tags: [goals]
+      summary: Log a reading session (increments streak)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogReadingSessionBody"
+      responses:
+        "200":
+          description: Updated goal with streak
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+
+  /goals/streak:
+    get:
+      operationId: getStreak
+      tags: [goals]
+      summary: Get current reading streak and history
+      responses:
+        "200":
+          description: Streak info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreakInfo"
+
+  # ─── Collections ─────────────────────────────────────────────────────────────
+  /collections:
+    get:
+      operationId: listCollections
+      tags: [collections]
+      summary: List all collections
+      responses:
+        "200":
+          description: Collections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Collection"
+    post:
+      operationId: createCollection
+      tags: [collections]
+      summary: Create a collection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCollectionBody"
+      responses:
+        "201":
+          description: Created collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+
+  /collections/{id}:
+    get:
+      operationId: getCollection
+      tags: [collections]
+      summary: Get a collection with its verses
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Collection with verses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateCollection
+      tags: [collections]
+      summary: Update a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCollectionBody"
+      responses:
+        "200":
+          description: Updated collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+    delete:
+      operationId: deleteCollection
+      tags: [collections]
+      summary: Delete a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /collections/{id}/verses:
+    post:
+      operationId: addVerseToCollection
+      tags: [collections]
+      summary: Add a verse to a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddVerseToCollectionBody"
+      responses:
+        "200":
+          description: Updated collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+
+  /collections/{id}/verses/{verseKey}:
+    delete:
+      operationId: removeVerseFromCollection
+      tags: [collections]
+      summary: Remove a verse from a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: verseKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Removed
+
+  # ─── Dashboard ───────────────────────────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +616,525 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    # ─── Quran ────────────────────────────────────────────────────
+    Surah:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameSimple:
+          type: string
+        nameArabic:
+          type: string
+        nameComplex:
+          type: string
+        versesCount:
+          type: integer
+        revelationPlace:
+          type: string
+        translatedName:
+          type: string
+      required:
+        - id
+        - nameSimple
+        - nameArabic
+        - nameComplex
+        - versesCount
+        - revelationPlace
+        - translatedName
+
+    Verse:
+      type: object
+      properties:
+        id:
+          type: integer
+        verseNumber:
+          type: integer
+        verseKey:
+          type: string
+        surahNumber:
+          type: integer
+        textUthmani:
+          type: string
+        translation:
+          type: ["string", "null"]
+        audioUrl:
+          type: ["string", "null"]
+        wordByWord:
+          type: array
+          items:
+            $ref: "#/components/schemas/WordByWord"
+      required:
+        - id
+        - verseNumber
+        - verseKey
+        - surahNumber
+        - textUthmani
+
+    WordByWord:
+      type: object
+      properties:
+        position:
+          type: integer
+        textUthmani:
+          type: string
+        translation:
+          type: ["string", "null"]
+        transliteration:
+          type: ["string", "null"]
+      required:
+        - position
+        - textUthmani
+
+    VersesPage:
+      type: object
+      properties:
+        verses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Verse"
+        totalCount:
+          type: integer
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - verses
+        - totalCount
+        - currentPage
+        - totalPages
+
+    SearchResult:
+      type: object
+      properties:
+        verseKey:
+          type: string
+        surahName:
+          type: string
+        verseNumber:
+          type: integer
+        textUthmani:
+          type: string
+        translation:
+          type: ["string", "null"]
+      required:
+        - verseKey
+        - surahName
+        - verseNumber
+        - textUthmani
+
+    SearchResults:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResult"
+        totalCount:
+          type: integer
+        currentPage:
+          type: integer
+      required:
+        - results
+        - totalCount
+        - currentPage
+
+    Translation:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        authorName:
+          type: string
+        languageName:
+          type: string
+      required:
+        - id
+        - name
+        - authorName
+        - languageName
+
+    Tafsir:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        authorName:
+          type: string
+        languageName:
+          type: string
+      required:
+        - id
+        - name
+        - authorName
+        - languageName
+
+    TafsirContent:
+      type: object
+      properties:
+        verseKey:
+          type: string
+        tafsirId:
+          type: integer
+        text:
+          type: string
+      required:
+        - verseKey
+        - tafsirId
+        - text
+
+    # ─── Bookmarks ─────────────────────────────────────────────────────────
+    Bookmark:
+      type: object
+      properties:
+        id:
+          type: integer
+        verseKey:
+          type: string
+        surahNumber:
+          type: integer
+        surahName:
+          type: string
+        verseNumber:
+          type: integer
+        textUthmani:
+          type: ["string", "null"]
+        translation:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - verseKey
+        - surahNumber
+        - surahName
+        - verseNumber
+        - createdAt
+
+    CreateBookmarkBody:
+      type: object
+      properties:
+        verseKey:
+          type: string
+        surahNumber:
+          type: integer
+        surahName:
+          type: string
+        verseNumber:
+          type: integer
+        textUthmani:
+          type: ["string", "null"]
+        translation:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+      required:
+        - verseKey
+        - surahNumber
+        - surahName
+        - verseNumber
+
+    BookmarkStatus:
+      type: object
+      properties:
+        bookmarked:
+          type: boolean
+        bookmarkId:
+          type: ["integer", "null"]
+      required:
+        - bookmarked
+
+    # ─── Notes ─────────────────────────────────────────────────────────────
+    Note:
+      type: object
+      properties:
+        id:
+          type: integer
+        verseKey:
+          type: string
+        surahNumber:
+          type: integer
+        surahName:
+          type: string
+        verseNumber:
+          type: integer
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - verseKey
+        - surahNumber
+        - surahName
+        - verseNumber
+        - content
+        - createdAt
+        - updatedAt
+
+    CreateNoteBody:
+      type: object
+      properties:
+        verseKey:
+          type: string
+        surahNumber:
+          type: integer
+        surahName:
+          type: string
+        verseNumber:
+          type: integer
+        content:
+          type: string
+      required:
+        - verseKey
+        - surahNumber
+        - surahName
+        - verseNumber
+        - content
+
+    UpdateNoteBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    # ─── Goals ─────────────────────────────────────────────────────────────
+    Goal:
+      type: object
+      properties:
+        id:
+          type: integer
+        dailyVerseTarget:
+          type: integer
+        currentStreak:
+          type: integer
+        longestStreak:
+          type: integer
+        totalVersesRead:
+          type: integer
+        totalDaysRead:
+          type: integer
+        lastReadAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - dailyVerseTarget
+        - currentStreak
+        - longestStreak
+        - totalVersesRead
+        - totalDaysRead
+        - createdAt
+
+    UpsertGoalBody:
+      type: object
+      properties:
+        dailyVerseTarget:
+          type: integer
+      required:
+        - dailyVerseTarget
+
+    LogReadingSessionBody:
+      type: object
+      properties:
+        versesRead:
+          type: integer
+      required:
+        - versesRead
+
+    StreakInfo:
+      type: object
+      properties:
+        currentStreak:
+          type: integer
+        longestStreak:
+          type: integer
+        totalDaysRead:
+          type: integer
+        lastReadAt:
+          type: ["string", "null"]
+          format: date-time
+        recentDays:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayActivity"
+      required:
+        - currentStreak
+        - longestStreak
+        - totalDaysRead
+        - recentDays
+
+    DayActivity:
+      type: object
+      properties:
+        date:
+          type: string
+        versesRead:
+          type: integer
+        read:
+          type: boolean
+      required:
+        - date
+        - versesRead
+        - read
+
+    # ─── Collections ───────────────────────────────────────────────────────
+    CollectionVerse:
+      type: object
+      properties:
+        id:
+          type: integer
+        verseKey:
+          type: string
+        surahNumber:
+          type: integer
+        surahName:
+          type: string
+        verseNumber:
+          type: integer
+        textUthmani:
+          type: ["string", "null"]
+        translation:
+          type: ["string", "null"]
+        addedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - verseKey
+        - surahNumber
+        - surahName
+        - verseNumber
+        - addedAt
+
+    Collection:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        verseCount:
+          type: integer
+        verses:
+          type: array
+          items:
+            $ref: "#/components/schemas/CollectionVerse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - verseCount
+        - createdAt
+        - updatedAt
+
+    CreateCollectionBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+      required:
+        - name
+
+    UpdateCollectionBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+
+    AddVerseToCollectionBody:
+      type: object
+      properties:
+        verseKey:
+          type: string
+        surahNumber:
+          type: integer
+        surahName:
+          type: string
+        verseNumber:
+          type: integer
+        textUthmani:
+          type: ["string", "null"]
+        translation:
+          type: ["string", "null"]
+      required:
+        - verseKey
+        - surahNumber
+        - surahName
+        - verseNumber
+
+    # ─── Dashboard ─────────────────────────────────────────────────────────
+    DashboardSummary:
+      type: object
+      properties:
+        totalBookmarks:
+          type: integer
+        totalNotes:
+          type: integer
+        totalCollections:
+          type: integer
+        currentStreak:
+          type: integer
+        longestStreak:
+          type: integer
+        totalVersesRead:
+          type: integer
+        dailyVerseTarget:
+          type: integer
+        lastReadAt:
+          type: ["string", "null"]
+          format: date-time
+        recentBookmarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bookmark"
+        recentNotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+      required:
+        - totalBookmarks
+        - totalNotes
+        - totalCollections
+        - currentStreak
+        - longestStreak
+        - totalVersesRead
+        - dailyVerseTarget
+        - recentBookmarks
+        - recentNotes
