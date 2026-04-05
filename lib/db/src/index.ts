@@ -1,11 +1,9 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
-import * as schema from "./schema";
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
+import * as schema from './schema/index.js';
+import path from 'path';
 
-const { Pool } = pg;
+export const client = createClient({ url: 'file:sqlite.db' });
+export const db = drizzle(client, { schema });
 
-// Allow missing DB locally so the UI can run without crashing the whole node layer
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL || "postgres://noop:noop@localhost:5432/noop" });
-export const db = drizzle(pool, { schema });
-
-export * from "./schema";
+export * from './schema/index.js';

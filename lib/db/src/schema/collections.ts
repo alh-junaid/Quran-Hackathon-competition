@@ -1,17 +1,18 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { sql } from "drizzle-orm";
 
-export const collectionsTable = pgTable("collections", {
-  id: serial("id").primaryKey(),
+export const collectionsTable = sqliteTable("collections", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   description: text("description"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => sql`CURRENT_TIMESTAMP`),
 });
 
-export const collectionVersesTable = pgTable("collection_verses", {
-  id: serial("id").primaryKey(),
+export const collectionVersesTable = sqliteTable("collection_verses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   collectionId: integer("collection_id").notNull().references(() => collectionsTable.id, { onDelete: "cascade" }),
   verseKey: text("verse_key").notNull(),
   surahNumber: integer("surah_number").notNull(),
@@ -19,7 +20,7 @@ export const collectionVersesTable = pgTable("collection_verses", {
   verseNumber: integer("verse_number").notNull(),
   textUthmani: text("text_uthmani"),
   translation: text("translation"),
-  addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+  addedAt: text("added_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertCollectionSchema = createInsertSchema(collectionsTable).omit({ id: true, createdAt: true, updatedAt: true });
