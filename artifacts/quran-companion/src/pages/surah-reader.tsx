@@ -15,7 +15,14 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { Button } from "@/components/ui/button";
 
 const normalizeArabic = (text: string) => {
-  return text.replace(/[\u0617-\u061A\u064B-\u0652]/g, "").trim();
+  if (!text) return "";
+  return text
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED]/g, "") // diacritics
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/ /g, "")
+    .trim();
 };
 
 
@@ -66,6 +73,40 @@ export default function SurahReader() {
     perPage: 300,
     ...(translationId ? { translationId } : {})
   });
+
+  const matchedPositions = useMemo(() => {
+    const matched = new Set<string>();
+    if (!versesPage || !transcript) return matched;
+    
+    // Remove all spaces for a continuous stream comparison if needed, or split by words.
+    // Speech API can clump words together.
+    const tWords = transcript.split(/\s+/).map(normalizeArabic).filter(Boolean);
+    let tIndex = 0;
+    
+    for (const verse of versesPage.verses) {
+      if ((verse as any).wordByWord) {
+        for (const word of (verse as any).wordByWord) {
+           const expected = normalizeArabic(word.textUthmani);
+           if (!expected) continue;
+           
+           let foundIndex = -1;
+           for (let i = tIndex; i < Math.min(tIndex + 8, tWords.length); i++) {
+             // Allowing includes to handle clumped words from API
+             if (tWords[i] === expected || tWords[i].includes(expected)) {
+               foundIndex = i;
+               break;
+             }
+           }
+           
+           if (foundIndex !== -1) {
+             matched.add(`${verse.id}-${word.position}`);
+             tIndex = foundIndex + 1;
+           }
+        }
+      }
+    }
+    return matched;
+  }, [transcript, versesPage]);
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-4xl space-y-8">
@@ -203,10 +244,7 @@ export default function SurahReader() {
                         (verse as any).wordByWord.map((word: any) => {
                           let isMatched = false;
                           if (isListening || showHifzResult) {
-                            const wordNormalized = normalizeArabic(word.textUthmani);
-                            if (wordNormalized && normalizedTranscript.includes(wordNormalized)) {
-                              isMatched = true;
-                            }
+                            isMatched = matchedPositions.has(`${verse.id}-${word.position}`);
                           }
                           
                           // Determine the visual display for the word

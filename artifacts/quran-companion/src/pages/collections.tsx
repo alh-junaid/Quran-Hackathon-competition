@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 const CURATED_THEMES = [
   { id: "patience", title: "Patience & Perseverance", query: "patient", icon: HeartHandshake, color: "from-rose-500/20 to-red-600/5", border: "border-rose-500/30", text: "text-rose-600 dark:text-rose-400" },
@@ -45,7 +44,7 @@ function ThemeDialog({ theme, open, onOpenChange }: { theme: typeof CURATED_THEM
           </div>
         </div>
 
-        <ScrollArea className="flex-1 p-6 min-h-0">
+        <div className="flex-1 p-6 overflow-y-auto">
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
@@ -81,7 +80,7 @@ function ThemeDialog({ theme, open, onOpenChange }: { theme: typeof CURATED_THEM
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
