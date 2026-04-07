@@ -31,8 +31,29 @@ export default function SurahReader() {
   const [translationId, setTranslationId] = useState<number | undefined>(undefined);
   const [reciterPath, setReciterPath] = useState<string>("Alafasy_128kbps");
   const [isHifzMode, setIsHifzMode] = useState(false);
+  const [showHifzResult, setShowHifzResult] = useState(false);
   
-  const { isListening, transcript, toggleListening } = useSpeechRecognition();
+  const { isListening, transcript, startListening, stopListening, setTranscript } = useSpeechRecognition();
+  
+  const handleToggleHifz = (checked: boolean) => {
+    setIsHifzMode(checked);
+    if (!checked) {
+      stopListening();
+      setShowHifzResult(false);
+      setTranscript("");
+    }
+  };
+  
+  const handleToggleListening = () => {
+    if (isListening) {
+      stopListening();
+      setShowHifzResult(true);
+    } else {
+      setTranscript("");
+      setShowHifzResult(false);
+      startListening();
+    }
+  };
   
   const normalizedTranscript = useMemo(() => normalizeArabic(transcript), [transcript]);
   
@@ -59,7 +80,7 @@ export default function SurahReader() {
                 <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10 transition-colors hover:bg-primary/10 cursor-help">
                   <Brain className={`h-4 w-4 ${isHifzMode ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
                   <Label htmlFor="hifz-mode" className="text-sm font-medium cursor-help">Hifz Mode</Label>
-                  <Switch id="hifz-mode" checked={isHifzMode} onCheckedChange={setIsHifzMode} />
+                  <Switch id="hifz-mode" checked={isHifzMode} onCheckedChange={handleToggleHifz} />
                   <Info className="h-3 w-3 text-muted-foreground ml-1" />
                 </div>
               </TooltipTrigger>
@@ -70,15 +91,22 @@ export default function SurahReader() {
           </TooltipProvider>
 
           {isHifzMode && (
-            <Button
-              variant={isListening ? "destructive" : "outline"}
-              size="sm"
-              onClick={toggleListening}
-              className="rounded-full shadow-sm gap-2"
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              {isListening ? "Stop Reciting" : "Start Reciting"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={isListening ? "destructive" : "outline"}
+                size="sm"
+                onClick={handleToggleListening}
+                className="rounded-full shadow-sm gap-2"
+              >
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                {isListening ? "Stop Auto-Check" : (showHifzResult ? "Restart Checking" : "Start Reciting")}
+              </Button>
+              {showHifzResult && (
+                <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                  Correction Mode Active
+                </span>
+              )}
+            </div>
           )}
 
           <Select value={reciterPath} onValueChange={setReciterPath}>
@@ -174,17 +202,31 @@ export default function SurahReader() {
                       {(verse as any).wordByWord?.length ? (
                         (verse as any).wordByWord.map((word: any) => {
                           let isMatched = false;
-                          if (isListening) {
+                          if (isListening || showHifzResult) {
                             const wordNormalized = normalizeArabic(word.textUthmani);
                             if (wordNormalized && normalizedTranscript.includes(wordNormalized)) {
                               isMatched = true;
                             }
                           }
                           
+                          // Determine the visual display for the word
+                          let visualClass = "";
+                          if (isHifzMode) {
+                            if (showHifzResult) {
+                              // Result mode: show all words, green if matched, red if missed
+                              visualClass = isMatched ? 'text-green-500 font-bold' : 'text-red-500 font-bold';
+                            } else {
+                              // Live mode: blur unmatched, green if matched
+                              visualClass = isMatched 
+                                ? 'text-green-500 font-bold blur-none' 
+                                : 'blur-[6px] hover:blur-none cursor-help opacity-90 hover:opacity-100';
+                            }
+                          }
+                          
                           return (
                             <span 
                               key={word.position}
-                              className={`transition-all duration-300 ${isHifzMode && !isMatched ? 'blur-[6px] hover:blur-none cursor-help opacity-90 hover:opacity-100' : ''} ${isMatched ? 'text-green-500 blur-none font-bold' : ''}`}
+                              className={`transition-all duration-300 ${visualClass}`}
                               title={word.translation || ""}
                             >
                               {word.textUthmani}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useCheckBookmark, useCreateBookmark, useDeleteBookmark, useListCollections, useAddVerseToCollection, useCreateNote, getListBookmarksQueryKey, getCheckBookmarkQueryKey, getListNotesQueryKey } from "@workspace/api-client-react";
+import { useCheckBookmark, useCreateBookmark, useDeleteBookmark, useListCollections, useAddVerseToCollection, useCreateNote, getListBookmarksQueryKey, getCheckBookmarkQueryKey, getListNotesQueryKey, getListCollectionsQueryKey, getGetCollectionQueryKey } from "@workspace/api-client-react";
 import { Bookmark, BookmarkCheck, BookText, Plus, Library } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -74,6 +74,8 @@ export function VerseActions({ verseKey, surahNumber, surahName, verseNumber, te
       data: { verseKey, surahNumber, surahName, verseNumber, textUthmani, translation }
     }, {
       onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListCollectionsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetCollectionQueryKey(collectionId) });
         toast({ title: "Added to collection" });
       }
     });
