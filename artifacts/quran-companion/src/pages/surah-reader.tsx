@@ -3,18 +3,25 @@ import { useGetSurahVerses, useListSurahs, useListTranslations } from "@workspac
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AudioPlayer } from "@/components/audio-player";
 import { VerseActions } from "@/components/verse-actions";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Brain, ChevronLeft, Info } from "lucide-react";
+import { Brain, ChevronLeft, Info, Mic, MicOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import { Button } from "@/components/ui/button";
+
+const normalizeArabic = (text: string) => {
+  return text.replace(/[\u0617-\u061A\u064B-\u0652]/g, "").trim();
+};
+
 
 const RECITERS = [
-  { id: "Alafasy", name: "Mishary Alafasy" },
-  { id: "Sudais/mp3", name: "Abdur-Rahman as-Sudais" },
+  { id: "Alafasy_128kbps", name: "Mishary Alafasy" },
+  { id: "Abdurrahmaan_As-Sudais_192kbps", name: "Abdur-Rahman as-Sudais" },
   { id: "Abdul_Basit_Murattal_192kbps", name: "Abdul Baset (Murattal)" }
 ];
 
@@ -22,8 +29,12 @@ export default function SurahReader() {
   const params = useParams();
   const surahNumber = parseInt(params.surahNumber || "1");
   const [translationId, setTranslationId] = useState<number | undefined>(undefined);
-  const [reciterPath, setReciterPath] = useState<string>("Alafasy");
+  const [reciterPath, setReciterPath] = useState<string>("Alafasy_128kbps");
   const [isHifzMode, setIsHifzMode] = useState(false);
+  
+  const { isListening, transcript, toggleListening } = useSpeechRecognition();
+  
+  const normalizedTranscript = useMemo(() => normalizeArabic(transcript), [transcript]);
   
   const { data: surahs } = useListSurahs();
   const surahInfo = surahs?.find(s => s.id === surahNumber);
@@ -57,6 +68,18 @@ export default function SurahReader() {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          {isHifzMode && (
+            <Button
+              variant={isListening ? "destructive" : "outline"}
+              size="sm"
+              onClick={toggleListening}
+              className="rounded-full shadow-sm gap-2"
+            >
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              {isListening ? "Stop Reciting" : "Start Reciting"}
+            </Button>
+          )}
 
           <Select value={reciterPath} onValueChange={setReciterPath}>
             <SelectTrigger className="w-[180px] rounded-full">
@@ -113,7 +136,13 @@ export default function SurahReader() {
           ))
         ) : (
           versesPage?.verses.map((verse, index) => {
-            const verseAudioUrl = verse.audioUrl?.replace('Alafasy/mp3', reciterPath).replace('Alafasy', reciterPath);
+            // Default audio uses everyayah formats. If reciter is swapped, replace the default path.
+            let verseAudioUrl = verse.audioUrl;
+            if (verseAudioUrl) {
+              // Ensure we accurately replace the reciter segment in standard URLs 
+              // (e.g. https://everyayah.com/data/Alafasy_128kbps/001001.mp3)
+              verseAudioUrl = verseAudioUrl.replace(/Alafasy_128kbps/g, reciterPath).replace(/Alafasy/g, reciterPath);
+            }
 
             return (
               <motion.div
@@ -143,15 +172,25 @@ export default function SurahReader() {
                     
                     <div className="font-arabic text-4xl md:text-5xl leading-loose text-right text-foreground py-4 flex flex-wrap justify-start gap-x-3 gap-y-6" dir="rtl">
                       {(verse as any).wordByWord?.length ? (
-                        (verse as any).wordByWord.map((word: any) => (
-                          <span 
-                            key={word.position}
-                            className={`transition-all duration-300 ${isHifzMode ? 'blur-[6px] hover:blur-none cursor-help opacity-90 hover:opacity-100' : ''}`}
-                            title={word.translation || ""}
-                          >
-                            {word.textUthmani}
-                          </span>
-                        ))
+                        (verse as any).wordByWord.map((word: any) => {
+                          let isMatched = false;
+                          if (isListening) {
+                            const wordNormalized = normalizeArabic(word.textUthmani);
+                            if (wordNormalized && normalizedTranscript.includes(wordNormalized)) {
+                              isMatched = true;
+                            }
+                          }
+                          
+                          return (
+                            <span 
+                              key={word.position}
+                              className={`transition-all duration-300 ${isHifzMode && !isMatched ? 'blur-[6px] hover:blur-none cursor-help opacity-90 hover:opacity-100' : ''} ${isMatched ? 'text-green-500 blur-none font-bold' : ''}`}
+                              title={word.translation || ""}
+                            >
+                              {word.textUthmani}
+                            </span>
+                          );
+                        })
                       ) : (
                         <span className={`transition-all duration-300 ${isHifzMode ? 'blur-[6px] hover:blur-none cursor-help' : ''}`}>
                           {verse.textUthmani}

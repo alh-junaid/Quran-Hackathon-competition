@@ -45,7 +45,7 @@ function ThemeDialog({ theme, open, onOpenChange }: { theme: typeof CURATED_THEM
           </div>
         </div>
 
-        <ScrollArea className="flex-1 p-6">
+        <ScrollArea className="flex-1 p-6 min-h-0">
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
