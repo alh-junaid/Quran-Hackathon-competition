@@ -30,6 +30,8 @@ export default function SurahReader() {
   const [reciterPath, setReciterPath] = useState<string>("Alafasy_128kbps");
   const [isHifzMode, setIsHifzMode] = useState(false);
   const [showHifzResult, setShowHifzResult] = useState(false);
+  const [leniency, setLeniency] = useState<'strict' | 'lenient'>('lenient');
+  const [correctionVoice, setCorrectionVoice] = useState<'en-US' | 'ur-PK'>('en-US');
   
   const { isListening, transcript, startListening, stopListening, setTranscript } = useSpeechRecognition();
   
@@ -43,7 +45,7 @@ export default function SurahReader() {
     ...(translationId ? { translationId } : {})
   });
   
-  const wordStates = useHifzTracker(transcript, versesPage);
+  const wordStates = useHifzTracker(transcript, versesPage, leniency, correctionVoice);
   
   const handleToggleHifz = (checked: boolean) => {
     setIsHifzMode(checked);
@@ -90,6 +92,24 @@ export default function SurahReader() {
 
           {isHifzMode && (
             <div className="flex items-center gap-2">
+              <Select value={leniency} onValueChange={(v: 'strict'|'lenient') => setLeniency(v)}>
+                <SelectTrigger className="w-[110px] rounded-full h-8 text-xs bg-muted">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lenient">Lenient</SelectItem>
+                  <SelectItem value="strict">Strict</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={correctionVoice} onValueChange={(v: 'en-US'|'ur-PK') => setCorrectionVoice(v)}>
+                <SelectTrigger className="w-[120px] rounded-full h-8 text-xs bg-primary/10 text-primary border-primary/20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en-US">Voice: English</SelectItem>
+                  <SelectItem value="ur-PK">Voice: Urdu</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant={isListening ? "destructive" : "outline"}
                 size="sm"
@@ -157,12 +177,13 @@ export default function SurahReader() {
           ))
         ) : (
           versesPage?.verses.map((verse, index) => {
-            // Default audio uses everyayah formats. If reciter is swapped, replace the default path.
+            // Construct the standard everyayah.com format reliably without regex issues
             let verseAudioUrl = verse.audioUrl;
             if (verseAudioUrl) {
-              // Ensure we accurately replace the reciter segment in standard URLs 
-              // (e.g. https://everyayah.com/data/Alafasy_128kbps/001001.mp3)
-              verseAudioUrl = verseAudioUrl.replace(/\/data\/[^\/]+\//, `/data/${reciterPath}/`);
+              const [surahNum, verseNum] = verse.verseKey.split(':');
+              const paddedSurah = surahNum.padStart(3, '0');
+              const paddedVerse = verseNum.padStart(3, '0');
+              verseAudioUrl = `https://everyayah.com/data/${reciterPath}/${paddedSurah}${paddedVerse}.mp3`;
             }
 
             return (
