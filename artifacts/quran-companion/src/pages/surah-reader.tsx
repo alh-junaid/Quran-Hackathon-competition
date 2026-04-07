@@ -14,16 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { Button } from "@/components/ui/button";
 
-const normalizeArabic = (text: string) => {
-  if (!text) return "";
-  return text
-    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED]/g, "") // diacritics
-    .replace(/[أإآ]/g, "ا")
-    .replace(/ة/g, "ه")
-    .replace(/ى/g, "ي")
-    .replace(/ /g, "")
-    .trim();
-};
+import { useHifzTracker } from "@/hooks/use-hifz-tracker";
 
 
 const RECITERS = [
@@ -41,6 +32,18 @@ export default function SurahReader() {
   const [showHifzResult, setShowHifzResult] = useState(false);
   
   const { isListening, transcript, startListening, stopListening, setTranscript } = useSpeechRecognition();
+  
+  const { data: surahs } = useListSurahs();
+  const surahInfo = surahs?.find(s => s.id === surahNumber);
+  
+  const { data: translations } = useListTranslations();
+  
+  const { data: versesPage, isLoading } = useGetSurahVerses(surahNumber, { 
+    perPage: 300,
+    ...(translationId ? { translationId } : {})
+  });
+  
+  const wordStates = useHifzTracker(transcript, versesPage);
   
   const handleToggleHifz = (checked: boolean) => {
     setIsHifzMode(checked);
@@ -61,52 +64,6 @@ export default function SurahReader() {
       startListening();
     }
   };
-  
-  const normalizedTranscript = useMemo(() => normalizeArabic(transcript), [transcript]);
-  
-  const { data: surahs } = useListSurahs();
-  const surahInfo = surahs?.find(s => s.id === surahNumber);
-  
-  const { data: translations } = useListTranslations();
-  
-  const { data: versesPage, isLoading } = useGetSurahVerses(surahNumber, { 
-    perPage: 300,
-    ...(translationId ? { translationId } : {})
-  });
-
-  const matchedPositions = useMemo(() => {
-    const matched = new Set<string>();
-    if (!versesPage || !transcript) return matched;
-    
-    // Remove all spaces for a continuous stream comparison if needed, or split by words.
-    // Speech API can clump words together.
-    const tWords = transcript.split(/\s+/).map(normalizeArabic).filter(Boolean);
-    let tIndex = 0;
-    
-    for (const verse of versesPage.verses) {
-      if ((verse as any).wordByWord) {
-        for (const word of (verse as any).wordByWord) {
-           const expected = normalizeArabic(word.textUthmani);
-           if (!expected) continue;
-           
-           let foundIndex = -1;
-           for (let i = tIndex; i < Math.min(tIndex + 8, tWords.length); i++) {
-             // Allowing includes to handle clumped words from API
-             if (tWords[i] === expected || tWords[i].includes(expected)) {
-               foundIndex = i;
-               break;
-             }
-           }
-           
-           if (foundIndex !== -1) {
-             matched.add(`${verse.id}-${word.position}`);
-             tIndex = foundIndex + 1;
-           }
-        }
-      }
-    }
-    return matched;
-  }, [transcript, versesPage]);
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-4xl space-y-8">
@@ -140,13 +97,8 @@ export default function SurahReader() {
                 className="rounded-full shadow-sm gap-2"
               >
                 {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                {isListening ? "Stop Auto-Check" : (showHifzResult ? "Restart Checking" : "Start Reciting")}
+                {isListening ? "Stop Auto-Check" : (transcript ? "Restart Checking" : "Start Reciting")}
               </Button>
-              {showHifzResult && (
-                <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                  Correction Mode Active
-                </span>
-              )}
             </div>
           )}
 
@@ -210,7 +162,7 @@ export default function SurahReader() {
             if (verseAudioUrl) {
               // Ensure we accurately replace the reciter segment in standard URLs 
               // (e.g. https://everyayah.com/data/Alafasy_128kbps/001001.mp3)
-              verseAudioUrl = verseAudioUrl.replace(/Alafasy_128kbps/g, reciterPath).replace(/Alafasy/g, reciterPath);
+              verseAudioUrl = verseAudioUrl.replace(/\/data\/[^\/]+\//, `/data/${reciterPath}/`);
             }
 
             return (
@@ -242,23 +194,18 @@ export default function SurahReader() {
                     <div className="font-arabic text-4xl md:text-5xl leading-loose text-right text-foreground py-4 flex flex-wrap justify-start gap-x-3 gap-y-6" dir="rtl">
                       {(verse as any).wordByWord?.length ? (
                         (verse as any).wordByWord.map((word: any) => {
-                          let isMatched = false;
-                          if (isListening || showHifzResult) {
-                            isMatched = matchedPositions.has(`${verse.id}-${word.position}`);
-                          }
+                          const state = wordStates[`${verse.id}-${word.position}`];
                           
                           // Determine the visual display for the word
                           let visualClass = "";
                           if (isHifzMode) {
-                            if (showHifzResult) {
-                              // Result mode: show all words, green if matched, red if missed
-                              visualClass = isMatched ? 'text-green-500 font-bold' : 'text-red-500 font-bold';
-                            } else {
-                              // Live mode: blur unmatched, green if matched
-                              visualClass = isMatched 
-                                ? 'text-green-500 font-bold blur-none' 
-                                : 'blur-[6px] hover:blur-none cursor-help opacity-90 hover:opacity-100';
-                            }
+                              if (state === 'correct') {
+                                visualClass = 'text-green-500 font-bold blur-none';
+                              } else if (state === 'wrong') {
+                                visualClass = 'text-red-500 font-bold blur-none';
+                              } else {
+                                visualClass = 'blur-[6px] hover:blur-none cursor-help opacity-90 hover:opacity-100';
+                              }
                           }
                           
                           return (
