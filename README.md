@@ -33,7 +33,10 @@ This project satisfies all hackathon requirements by integrating a robust mixtur
 ---
 
 ## ✨ Key Features highlighting Innovation
-1. **Interactive Hifz (Memorization) Mode**: Utilizes Web Speech API directly in the browser to listen to your recitation. Turn it on, speak a verse, and watch correctly recited words unblur gracefully. Click "Stop Auto-Check" and the system will instantly paint skipped or incorrect words in **red**.
+1. **Interactive Hifz (Memorization) Mode**: 
+   - Utilizes native Web Speech API directly in the browser to listen to your recitation. Turn it on, and watch words dynamically unblur gracefully as you speak them correctly.
+   - **Silent UI Visual Correction:** Intentionally drops robotic AI text-to-speech to avoid terrible OS-native Hindi/Urdu localization quirks. Instead, it offers a purely visual tracking model (similar to premium apps like Duolingo) where wrongly recited words instantly unblur and highlight in **red**, providing a seamless, fast, and completely distraction-free Hifz environment.
+   - **Lenient vs Strict Checking:** Built-in sequential phonetic-root algorithms compensate for minor dialect stutters without penalizing the user.
 2. **Dynamic UI/UX**: Crafted with beautiful Tailwind CSS gradients, framer-motion micro-animations, and responsive glassmorphism designed to feel premium and engaging.
 
 ---

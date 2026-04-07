@@ -77,7 +77,7 @@ router.get("/quran/surahs/:surahNumber/verses", async (req, res): Promise<void> 
   // Fetch verses and translations in parallel
   const [versesData, translationMap] = await Promise.all([
     fetchQuranApi(
-      `/verses/by_chapter/${params.data.surahNumber}?words=true&word_fields=text_uthmani,transliteration&fields=text_uthmani,verse_key&per_page=${perPage}&page=${page}`
+      `/verses/by_chapter/${params.data.surahNumber}?words=true&word_fields=text_uthmani,transliteration,audio_url&fields=text_uthmani,verse_key&per_page=${perPage}&page=${page}`
     ) as Promise<{ verses: unknown[]; pagination: Record<string, unknown> }>,
     fetchChapterTranslations(params.data.surahNumber),
   ]);
@@ -107,7 +107,7 @@ router.get("/quran/verses/:verseKey", async (req, res): Promise<void> => {
 
   const [verseData, translationMap] = await Promise.all([
     fetchQuranApi(
-      `/verses/by_key/${verseKey}?words=true&word_fields=text_uthmani,transliteration&fields=text_uthmani,verse_key&audio=1`
+      `/verses/by_key/${verseKey}?words=true&word_fields=text_uthmani,transliteration,audio_url&fields=text_uthmani,verse_key&audio=1`
     ) as Promise<{ verse: unknown }>,
     fetchChapterTranslations(surahNum),
   ]);
@@ -252,7 +252,7 @@ router.get("/quran/random-verse", async (req, res): Promise<void> => {
 
   const [verseData, translationMap] = await Promise.all([
     fetchQuranApi(
-      `/verses/by_key/${verseKey}?words=true&word_fields=text_uthmani,transliteration&fields=text_uthmani,verse_key&audio=1`
+      `/verses/by_key/${verseKey}?words=true&word_fields=text_uthmani,transliteration,audio_url&fields=text_uthmani,verse_key&audio=1`
     ) as Promise<{ verse: unknown }>,
     fetchChapterTranslations(surahNumRand),
   ]);
@@ -268,7 +268,7 @@ router.get("/quran/daily-challenge", async (_req, res): Promise<void> => {
   const translationMap = await fetchChapterTranslations(surahNum);
   
   const versesData = await Promise.all(verseKeys.map(key => 
-    fetchQuranApi(`/verses/by_key/${key}?words=true&word_fields=text_uthmani,transliteration&fields=text_uthmani,verse_key&audio=1`) as Promise<{ verse: unknown }>
+    fetchQuranApi(`/verses/by_key/${key}?words=true&word_fields=text_uthmani,transliteration,audio_url&fields=text_uthmani,verse_key&audio=1`) as Promise<{ verse: unknown }>
   ));
   
   const verses = versesData.filter(d => d.verse).map(d => mapVerse(d.verse as Record<string, unknown>, translationMap));
@@ -298,6 +298,7 @@ function mapVerse(v: Record<string, unknown>, translationMap: Map<string, string
       transliteration: typeof w.transliteration === "object" && w.transliteration !== null
         ? (w.transliteration as Record<string, unknown>)?.text ?? null
         : null,
+      audioUrl: typeof w.audio_url === "string" ? `https://verses.quran.com/${w.audio_url}` : null,
     };
   });
 

@@ -31,7 +31,6 @@ export default function SurahReader() {
   const [isHifzMode, setIsHifzMode] = useState(false);
   const [showHifzResult, setShowHifzResult] = useState(false);
   const [leniency, setLeniency] = useState<'strict' | 'lenient'>('lenient');
-  const [correctionVoice, setCorrectionVoice] = useState<'en-US' | 'ur-PK'>('en-US');
   
   const { isListening, transcript, startListening, stopListening, setTranscript } = useSpeechRecognition();
   
@@ -45,7 +44,7 @@ export default function SurahReader() {
     ...(translationId ? { translationId } : {})
   });
   
-  const wordStates = useHifzTracker(transcript, versesPage, leniency, correctionVoice);
+  const wordStates = useHifzTracker(transcript, versesPage, leniency);
   
   const handleToggleHifz = (checked: boolean) => {
     setIsHifzMode(checked);
@@ -99,15 +98,6 @@ export default function SurahReader() {
                 <SelectContent>
                   <SelectItem value="lenient">Lenient</SelectItem>
                   <SelectItem value="strict">Strict</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={correctionVoice} onValueChange={(v: 'en-US'|'ur-PK') => setCorrectionVoice(v)}>
-                <SelectTrigger className="w-[120px] rounded-full h-8 text-xs bg-primary/10 text-primary border-primary/20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en-US">Voice: English</SelectItem>
-                  <SelectItem value="ur-PK">Voice: Urdu</SelectItem>
                 </SelectContent>
               </Select>
               <Button

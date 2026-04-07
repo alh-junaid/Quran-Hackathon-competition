@@ -11,17 +11,7 @@ const normalizeArabic = (text: string) => {
     .trim();
 };
 
-const detectTajweedRule = (word: string) => {
-  // Meem or Noon followed by Shaddah
-  if (/[\u0645\u0646]\u0651/.test(word)) return "Ghunnah";
-  // Qaf, Twa, Ba, Jeem, Dal with Sukoon
-  if (/[\u0642\u0637\u0628\u062C\u062F]\u0652/.test(word)) return "Qalqalah";
-  // Madd marker
-  if (/[\u0653\u06E4]/.test(word) || /آ/.test(word)) return "Madd";
-  return null;
-};
-
-export function useHifzTracker(transcript: string, versesPage: any, leniency: 'strict' | 'lenient' = 'strict', correctionVoice: string = 'en-US') {
+export function useHifzTracker(transcript: string, versesPage: any, leniency: 'strict' | 'lenient' = 'strict') {
   const [wordStates, setWordStates] = useState<Record<string, 'correct' | 'wrong'>>({});
   const spokenErrors = useRef(new Set<string>());
 
@@ -109,40 +99,20 @@ export function useHifzTracker(transcript: string, versesPage: any, leniency: 's
     setWordStates(newStates);
 
     if (newlyWrongWord) {
-      // Instantly clear the speech queue so it NEVER spams sentences ahead of time!
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-      
-      try {
-        const rule = detectTajweedRule(newlyWrongWord.textUthmani);
-        
-        let textToSpeak = "";
-        
-        if (rule) {
-          if (correctionVoice === 'ur-PK') {
-             textToSpeak = `Yahan Tajweed dekhein, shayad aap ne ${rule} miss kiya hai.`;
-          } else {
-             textToSpeak = `Correction. Check your Tajweed, you might have missed the ${rule} rule here.`;
-          }
-        } else {
-          if (correctionVoice === 'ur-PK') {
-              textToSpeak = `Ghalat. Lafz ka matlab hai, ${newlyWrongWord.translation}`;
-          } else {
-              textToSpeak = `Correction. The word means, ${newlyWrongWord.translation}`;
-          }
+      // Play the ACTUAL pristine human recitation of the exact word they missed!
+      const audioUrl = (newlyWrongWord as any).audioUrl;
+      if (audioUrl) {
+        try {
+          const audio = new Audio(audioUrl);
+          audio.volume = 0.8;
+          audio.play().catch(e => console.error("Audio block:", e));
+        } catch (e) {
+          console.error("Audio construction error", e);
         }
-        
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = correctionVoice;
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
-      } catch (e) {
-        console.error("Speech API error", e);
       }
     }
 
-  }, [transcript, expectedSequence, leniency, correctionVoice]);
+  }, [transcript, expectedSequence, leniency]);
 
   return wordStates;
 }
