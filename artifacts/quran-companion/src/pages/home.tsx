@@ -1,46 +1,72 @@
-import { 
-  useGetDashboardSummary, 
-  useGetStreak 
+import {
+  getGetDashboardSummaryQueryKey,
+  getGetStreakQueryKey,
+  useGetDashboardSummary,
+  useGetStreak,
+  useLogReadingSession,
 } from "@workspace/api-client-react";
-import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Flame, Target, Bookmark, BookText, Library, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Flame, Target, Bookmark, BookText, Library, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AudioPlayer } from "@/components/audio-player";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: summary, isLoading: loadingSummary } = useGetDashboardSummary();
-  
-  // Custom Hackathon Integration
-  const { data: challengeVerses, isLoading: loadingChallenge } = useQuery({
-    queryKey: ['daily-challenge'],
+  const { data: streak, isLoading: loadingStreak } = useGetStreak();
+
+  const {
+    data: challengeVerses,
+    isLoading: loadingChallenge,
+    isError: challengeError,
+    refetch: refetchChallenge,
+  } = useQuery({
+    queryKey: ["daily-challenge"],
     queryFn: async () => {
-      const res = await fetch('/api/quran/daily-challenge');
-      if (!res.ok) throw new Error('Failed to fetch');
-      return res.json().then(d => d.verses as any[]);
-    }
-  });
-  
-  const [completed, setCompleted] = useState(false);
-  const completeChallenge = useMutation({
-    mutationFn: async () => {
-      const res = await fetch('/api/user/streak/increment', { method: 'POST' });
-      return res.json();
+      const res = await fetch("/api/quran/daily-challenge");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json().then((d) => d.verses as any[]);
     },
-    onSuccess: () => {
-      setCompleted(true);
-      queryClient.invalidateQueries({ queryKey: ['getStreak'] });
-    }
   });
 
-  const { data: streak, isLoading: loadingStreak } = useGetStreak();
-  // Override visual streak if just completed
-  const displayStreak = completed ? (streak?.currentStreak || 0) + 1 : (streak?.currentStreak || 0);
+  const [completed, setCompleted] = useState(false);
+  const completeChallenge = useLogReadingSession({
+    mutation: {
+      onSuccess: () => {
+        setCompleted(true);
+        void queryClient.invalidateQueries({ queryKey: getGetStreakQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: ["daily-challenge"] });
+        toast({
+          title: "Habit recorded",
+          description: "Your reading session was saved and your streak refreshed.",
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Could not save completion",
+          description: "Try again in a moment. The app is still usable for reading.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const handleCompleteChallenge = () => {
+    completeChallenge.mutate({
+      data: {
+        versesRead: challengeVerses?.length || 1,
+      },
+    });
+  };
+
+  const displayStreak = streak?.currentStreak || 0;
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-6xl space-y-8">
@@ -50,8 +76,7 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Verse of the Day */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="md:col-span-2"
@@ -69,19 +94,26 @@ export default function Home() {
                   <Skeleton className="h-8 w-full" />
                   <Skeleton className="h-4 w-3/4" />
                 </div>
+              ) : challengeError ? (
+                <div className="space-y-4 rounded-xl border border-dashed border-border p-4">
+                  <p className="text-sm text-muted-foreground">Could not load today&apos;s verses.</p>
+                  <Button variant="outline" size="sm" onClick={() => void refetchChallenge()}>
+                    Retry
+                  </Button>
+                </div>
               ) : challengeVerses && challengeVerses.length > 0 ? (
                 <div className="space-y-6">
                   {challengeVerses.map((verse, idx) => (
-                    <motion.div 
-                      key={verse.id} 
-                      initial={{ opacity: 0, x: -10 }} 
-                      animate={{ opacity: 1, x: 0 }} 
+                    <motion.div
+                      key={verse.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.1 }}
                       className="border-b border-border/50 pb-4 last:border-0 last:pb-0"
                     >
                       <div className="flex justify-between items-start mb-2">
-                         {verse.audioUrl && <AudioPlayer src={verse.audioUrl} />}
-                         <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded-full">{verse.verseKey}</span>
+                        {verse.audioUrl && <AudioPlayer src={verse.audioUrl} />}
+                        <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded-full">{verse.verseKey}</span>
                       </div>
                       <div className="font-arabic text-2xl md:text-3xl leading-loose text-right" dir="rtl">
                         {verse.textUthmani}
@@ -89,12 +121,13 @@ export default function Home() {
                       <p className="text-muted-foreground mt-2 text-sm italic">"{verse.translation}"</p>
                     </motion.div>
                   ))}
-                  
+
                   <AnimatePresence>
                     {!completed ? (
                       <motion.div exit={{ opacity: 0, scale: 0.9 }}>
-                        <Button 
-                          onClick={() => completeChallenge.mutate()} 
+                        <Button
+                          onClick={handleCompleteChallenge}
+                          disabled={completeChallenge.isPending}
                           className="w-full font-bold group mt-4 h-12"
                           size="lg"
                         >
@@ -103,13 +136,13 @@ export default function Home() {
                         </Button>
                       </motion.div>
                     ) : (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.9 }} 
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className="w-full bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 p-4 rounded-lg flex items-center justify-center font-bold"
                       >
                         <Flame className="mr-2 h-5 w-5 animate-pulse" />
-                        Habit Completed! Streak increased.
+                        Habit Completed! Streak updated.
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -121,8 +154,7 @@ export default function Home() {
           </Card>
         </motion.div>
 
-        {/* Streak & Goal */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
