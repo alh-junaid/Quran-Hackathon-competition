@@ -47,3 +47,5 @@ Thumbs.db
 # local workspace caches
 .cache/
 .local/
+.netlify/
+artifacts/**/.netlify/

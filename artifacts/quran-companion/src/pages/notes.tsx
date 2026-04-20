@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Edit, BookText, Quote, ChevronRight, PenTool } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,10 +92,11 @@ export default function Notes() {
           
           <AnimatePresence>
             {notes.map((note, index) => {
-              const dateObj = new Date(note.updatedAt);
-              const day = format(dateObj, 'dd');
-              const month = format(dateObj, 'MMM');
-              const year = format(dateObj, 'yyyy');
+              const dateObj = note.updatedAt ? new Date(note.updatedAt) : null;
+              const hasValidDate = Boolean(dateObj && isValid(dateObj));
+              const day = hasValidDate ? format(dateObj as Date, 'dd') : '--';
+              const month = hasValidDate ? format(dateObj as Date, 'MMM') : '---';
+              const year = hasValidDate ? format(dateObj as Date, 'yyyy') : '----';
               const isEven = index % 2 === 0;
 
               return (

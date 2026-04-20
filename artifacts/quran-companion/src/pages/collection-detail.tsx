@@ -7,7 +7,7 @@ import { Trash2, ChevronLeft, Trash } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 
 export default function CollectionDetail() {
   const params = useParams();
@@ -129,7 +129,7 @@ export default function CollectionDetail() {
                   </div>
                 )}
                 <div className="text-xs text-muted-foreground mt-2 text-right">
-                  Added on {format(new Date(verse.addedAt), "MMM d, yyyy")}
+                  Added on {verse.addedAt && isValid(new Date(verse.addedAt)) ? format(new Date(verse.addedAt), "MMM d, yyyy") : "Unknown date"}
                 </div>
               </div>
             </Card>
