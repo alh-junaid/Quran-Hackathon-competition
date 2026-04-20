@@ -1,56 +1,111 @@
-<div align="center">
-  <img src="https://raw.githubusercontent.com/Quran-Foundation/brand-assets/main/logo.png" width="120" alt="Quran Foundation Logo">
-  <h1>Quran Companion: The Habit Builder</h1>
-  <p>Submission for the <b>Provision Launch Quran Hackathon ($10,000 Prize Pool)</b></p>
-  
-  <p>
-    <a href="https://launch.provisioncapital.com/quran-hackathon">Hackathon Link</a> •
-    <a href="https://api-docs.quran.foundation">Quran APIs</a>
-  </p>
-</div>
+# Quran Companion
 
-<br/>
+A modern Quran engagement application focused on consistency, reflection, and memorization support.
 
-## 🌟 Elevator Pitch
-Millions reconnect with the Quran during Ramadan, only to lose momentum afterwards. **Quran Companion** is a highly interactive, beautifully designed web experience built to make that relationship lasting. By introducing **Daily Micro-Habits**, **Interactive Memorization (Hifz) with AI Error Correction**, and **Thematic Tadabbur Collections**, users are given practical tools to engage with the Quran every single day.
+This repository contains the complete monorepo for the Quran Hackathon submission, including the React client, Express API server, shared API types, and database schema.
 
----
+## Project Goal
 
-## 🏆 Hackathon API Integrations
+Quran Companion helps users build a sustainable relationship with the Quran through:
 
-This project satisfies all hackathon requirements by integrating a robust mixture of Content and User APIs from the Quran Foundation ecosystem.
+- Daily micro-habits
+- Structured reading flows
+- Bookmarks, notes, and collections
+- Memorization support and recitation-oriented interactions
+- Progress visibility through streaks and dashboard metrics
 
-### **Content APIs Used:**
-- **Quran API (`/quran/surahs`, `/quran/verses`)**: Powering the immersive reading experience and thematic explorations.
-- **Translation API (`/quran/translations`)**: Seamless toggling between multiple globally recognized translations.
-- **Audio API (`/audio/reciters`)**: Multi-reciter audio playback (Mishary Alafasy, as-Sudais, Abdul Baset) synced with verses.
+## Core Features
 
-### **User APIs Used:**
-- **Streak Tracking (`/goals/streak`)**: **(High Impact)** Built a "Daily Micro-Habit" challenge on the dashboard. Upon completing a daily verse reflection, the user's streak flame increments, directly addressing the "building habits" hackathon prompt.
-- **Collections (`/collections`)**: Empowers users to curate personal lists of verses (e.g., "Duas of Prophets") for deeper *Tadabbur*.
-- **Bookmarks (`/bookmarks`)**: Standardized tracking to resume reading precisely where left off.
+- Daily challenge flow with streak updates
+- Smart daily plan with selectable time and focus modes
+- Weekly progress summary from recent reading sessions
+- Contextual reflection prompt for daily Quran engagement
+- Quran browsing and surah reading experience
+- Verse bookmarks and personal notes
+- Thematic collections for study and tadabbur
+- Dashboard summary for engagement metrics
+- Audio playback support for recitation
 
----
+## Architecture
 
-## ✨ Key Features highlighting Innovation
-1. **Interactive Hifz (Memorization) Mode**: 
-   - Utilizes native Web Speech API directly in the browser to listen to your recitation. Turn it on, and watch words dynamically unblur gracefully as you speak them correctly.
-   - **Silent UI Visual Correction:** Intentionally drops robotic AI text-to-speech to avoid terrible OS-native Hindi/Urdu localization quirks. Instead, it offers a purely visual tracking model (similar to premium apps like Duolingo) where wrongly recited words instantly unblur and highlight in **red**, providing a seamless, fast, and completely distraction-free Hifz environment.
-   - **Lenient vs Strict Checking:** Built-in sequential phonetic-root algorithms compensate for minor dialect stutters without penalizing the user.
-2. **Dynamic UI/UX**: Crafted with beautiful Tailwind CSS gradients, framer-motion micro-animations, and responsive glassmorphism designed to feel premium and engaging.
+This is a pnpm workspace monorepo with:
 
----
+- Frontend app: artifacts/quran-companion (React + Vite + Tailwind)
+- API server: artifacts/api-server (Express + TypeScript)
+- Shared API client: lib/api-client-react
+- Shared API schema/types: lib/api-spec and lib/api-zod
+- Database layer: lib/db (Drizzle)
 
-## 🛠️ Run it locally (Cross-Platform)
+API routes are exposed under /api, including health checks, Quran content, bookmarks, notes, goals, collections, and dashboard endpoints.
 
-This is a monorepo setup using `pnpm`. It has been thoroughly tested on macOS, Linux, and Windows.
+## Tech Stack
+
+- TypeScript
+- React + Vite
+- Tailwind CSS
+- TanStack Query
+- Express 5
+- Drizzle ORM
+- Zod
+- pnpm workspaces
+
+## Local Development
+
+Prerequisites:
+
+- Node.js 24+
+- pnpm
+
+Install dependencies:
 
 ```bash
-# 1. Install dependencies
 pnpm install
-
-# 2. Run the development server (Client + API)
-npm run dev
 ```
 
-*Note: The API server runs on port `4000` and the React frontend on `5173`. We use `cross-env` to ensure `NODE_ENV=development` is properly injected across all Operating Systems.*
+Run client + API together:
+
+```bash
+pnpm run dev
+```
+
+Default local ports:
+
+- Frontend: 5173
+- API: 4000
+
+Health check:
+
+```text
+GET http://localhost:4000/api/healthz
+```
+
+## Build and Typecheck
+
+Typecheck all packages:
+
+```bash
+pnpm run typecheck
+```
+
+Production build:
+
+```bash
+pnpm run build
+```
+
+## Deployment Notes
+
+The frontend expects API routes under /api. In production, deploy with one of these patterns:
+
+- Same-domain setup with reverse proxy (recommended): route /api to the API server
+- Separate frontend/backend domains with an edge rewrite from frontend /api to backend
+
+Ensure CORS and HTTPS are enabled for production traffic.
+
+## Submission Resources
+
+For a complete submission checklist (hosting, demo video, and form-answer template), see SUBMISSION_GUIDE.md.
+
+## License
+
+MIT
