@@ -18,6 +18,18 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
 
+async function tryDemoFallback<T>(url: string, method: string, bodyText?: string | null): Promise<T | null> {
+  if (!url.startsWith("/api/")) return null;
+
+  const { getDemoFallbackByUrl } = await import("./demo-fallback");
+  return getDemoFallbackByUrl<T>(url, method, bodyText);
+}
+
+function looksLikeStatic404(response: Response): boolean {
+  const contentType = response.headers.get("content-type") || "";
+  return response.status === 404 && contentType.includes("text/html");
+}
+
 /**
  * Set a base URL that is prepended to every relative request URL
  * (i.e. paths that start with `/`).
@@ -360,9 +372,22 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  let response: Response;
+
+  try {
+    response = await fetch(input, { ...init, method, headers });
+  } catch {
+    const fallback = await tryDemoFallback<T>(requestInfo.url, method, typeof init.body === "string" ? init.body : null);
+    if (fallback !== null) return fallback;
+    throw new TypeError(`customFetch: unable to reach ${requestInfo.url}`);
+  }
 
   if (!response.ok) {
+    if (looksLikeStatic404(response)) {
+      const fallback = await tryDemoFallback<T>(requestInfo.url, method, typeof init.body === "string" ? init.body : null);
+      if (fallback !== null) return fallback;
+    }
+
     const errorData = await parseErrorBody(response, method);
     throw new ApiError(response, errorData, requestInfo);
   }

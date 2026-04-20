@@ -1,0 +1,9 @@
+[build]
+  base = "artifacts/quran-companion"
+  command = "pnpm --filter @workspace/quran-companion run build"
+  publish = "dist/public"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

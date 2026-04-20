@@ -1,6 +1,7 @@
 import {
   getGetDashboardSummaryQueryKey,
   getGetStreakQueryKey,
+  getDailyChallengeFallback,
   useGetDashboardSummary,
   useGetStreak,
   useLogReadingSession,
@@ -141,9 +142,14 @@ export default function Home() {
   } = useQuery({
     queryKey: ["daily-challenge"],
     queryFn: async () => {
-      const res = await fetch("/api/quran/daily-challenge");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json().then((d) => d.verses as ChallengeVerse[]);
+      try {
+        const res = await fetch("/api/quran/daily-challenge");
+        if (!res.ok) throw new Error("Failed to fetch");
+        const d = await res.json();
+        return d.verses as ChallengeVerse[];
+      } catch {
+        return getDailyChallengeFallback().verses as ChallengeVerse[];
+      }
     },
   });
 
